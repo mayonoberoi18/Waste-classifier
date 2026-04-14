@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waste Classifier - Illuminati</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <style>
+    body { 
+      margin:0; padding:20px; font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #0f0f23, #1a1a2e); 
+      color:#fff; text-align:center; min-height:100vh; 
+    }
+    .header { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 15px; 
+      margin-bottom: 15px; 
+      flex-wrap: wrap; 
+    }
+    .logo { 
+      width: 90px; 
+      height: 90px; 
+      border-radius: 50%; 
+      border: 4px solid #00ffcc; 
+      object-fit: cover; 
+      box-shadow: 0 0 25px rgba(0,255,204,0.7); 
+    }
+    h1 { 
+      background: linear-gradient(90deg, #00ffcc, #ff00cc); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+      font-size: 2.7em; 
+      margin:0; 
+    }
+    button { 
+      padding:16px 32px; 
+      margin:12px; 
+      font-size:1.2em; 
+      border:none; 
+      border-radius:50px; 
+      cursor:pointer; 
+      font-weight:bold; 
+    }
+    .upload-btn { background:#ff00cc; color:white; }
+    #status { margin:25px; font-size:1.4em; min-height:40px; color:#00ffcc; }
+    #preview { 
+      max-width:420px; 
+      border:5px solid #ff00cc; 
+      border-radius:16px; 
+      margin:25px auto; 
+      display:none; 
+      box-shadow: 0 0 25px rgba(255,0,204,0.5); 
+    }
+    .result { 
+      font-size:1.9em; 
+      margin:18px auto; 
+      padding:18px; 
+      max-width:520px; 
+      border-radius:14px; 
+      background:rgba(255,255,255,0.12); 
+    }
+    .biodegradable { color:#00ff99; }
+    .non-biodegradable { color:#ff5555; }
+    .footer { 
+      margin-top: 60px; 
+      font-size: 1.1em; 
+      color: #00ffcc; 
+      font-weight: bold; 
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- Replace with your Illuminati logo direct link -->
+    <img src="https://ibb.co/35THFsyd" 
+         alt="Illuminati Logo" class="logo">
+    <h1>Waste Classifier</h1>
+  </div>
+  
+  <p>Upload photo or use live camera to check if waste is <strong>Biodegradable</strong> or <strong>Non-Biodegradable</strong></p>
+
+  <button onclick="startWebcam()">📷 Start Live Webcam</button>
+  <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📤 Upload Image</button>
+  <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleUpload(event)">
+
+  <div id="status">Loading model... Please wait</div>
+  <div id="webcam-container"></div>
+  <img id="preview" alt="Preview">
+
+  <div id="label-container"></div>
+
+  <div class="footer">
+    Made by Mayon Oberoi • Illuminati
+  </div>
+
+  <script>
+    let model, webcam, maxPredictions;
+    const URL = "https://teachablemachine.withgoogle.com/models/eS3MDtblh/";
+
+    async function loadModel() {
+      try {
+        document.getElementById("status").innerHTML = "Loading model...";
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+        document.getElementById("status").innerHTML = "✅ Model loaded successfully! Ready to classify waste.";
+      } catch (e) {
+        document.getElementById("status").innerHTML = "❌ Failed to load model. Check internet connection.";
+        console.error(e);
+      }
+    }
+
+    async function handleUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!model) { 
+        document.getElementById("status").innerHTML = "Model is still loading..."; 
+        return; 
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.getElementById("preview");
+        img.src = e.target.result;
+        img.style.display = "block";
+        document.getElementById("webcam-container").innerHTML = "";
+
+        img.onload = async function() {
+          document.getElementById("status").innerHTML = "Analyzing waste...";
+          const prediction = await model.predict(img);
+          let html = "";
+          for (let i = 0; i < maxPredictions; i++) {
+            const prob = (prediction[i].probability * 100).toFixed(1);
+            const className = prediction[i].className;
+            const colorClass = className.toLowerCase().includes("biodegradable") ? "biodegradable" : "non-biodegradable";
+            html += `<div class="result ${colorClass}">${className}: ${prob}%</div>`;
+          }
+          document.getElementById("label-container").innerHTML = html;
+          document.getElementById("status").innerHTML = "✅ Analysis Complete!";
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Load model when page opens
+    window.onload = loadModel;
+  </script>
+</body>
+</html>
